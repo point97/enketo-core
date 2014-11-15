@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet' ],
-    function( $, Widget, configStr, L ) {
+define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlineLayer' ],
+    function( $, Widget, configStr, L, offlineLayer ) {
         "use strict";
 
         var pluginName = 'geopicker',
@@ -202,6 +202,7 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet' ],
             }
 
             // setting map location on load
+            console.log('[Geopicker._init()] loadedVal '+loadedVal)
             if ( !loadedVal ) {
                 // set worldview in case permissions take too long (e.g. in FF);
                 this._updateMap( [ 0, 0 ], 1 );
@@ -633,6 +634,37 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet' ],
 
                 // watch out, default "Leaflet" link clicks away from page, loosing all data
                 this.map.attributionControl.setPrefix( '' );
+
+
+                var mapquestUrl = 'http://{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png'
+                var subDomains = ['otile1','otile2','otile3','otile4']
+                var mapquestAttrib = 'Data, imagery and map information provided by <a href="http://open.mapquest.co.uk" target="_blank">MapQuest</a>, <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> and contributors.'
+
+                var options = { 
+                    map: this.map,
+                    maxZoom: 12, 
+                    attribution: mapquestAttrib, 
+                    subdomains: subDomains,
+                    dbOnly: true, 
+                    onReady: function(){}, 
+                    onError: function(){}, 
+                    storeName:"OSMTiles", 
+                    dbOption:"WebSQL"
+                }
+                offlineLayer = new OfflineLayer( mapquestUrl, options);
+                offlineLayer.saveRegions(config.regions, options.maxZoom, 
+                  function(){
+                    console.log('[saveRegions] onStarted');
+
+                  },
+                  function(){
+                    console.log('[saveRegions] onSuccess');
+                    $("#log").text('Done Loading OSM Regions')
+                  },
+                  function(error){
+                    console.log('onError');
+                    console.log(error);
+                });
 
                 // add layer control
                 if ( layers.length > 1 ) {
