@@ -778,7 +778,7 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                     dbOnly: true,
                     onReady: function(){}, 
                     onError: function(){}, 
-                    storeName:"test",
+                    storeName: map.storeName,
                     dbOption:"WebSQL", // HAd to use WebSQL, indexDB was throwing an error.
                     attribution: map.attribution || ''
                 } ) );
