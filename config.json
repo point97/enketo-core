@@ -16,14 +16,6 @@
         "enketo-widget/trigger/triggerwidget"
     ],
     "maps": [ {
-        "tiles": [ "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" ],
-        "name": "streets",
-        "attribution": "Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors"
-    }, {
-        "tiles": [ "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" ],
-        "name": "layer2",
-        "attribution": "Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors"
-    }, {
         "tiles": [ "http://tile.stamen.com/watercolor/{z}/{x}/{y}.jpg" ],
         "name": "layer3",
         "attribution": "Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors"

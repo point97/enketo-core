@@ -602,13 +602,26 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
 
             // console.debug( 'dynamic map to be updated with latLng', latLng );
             if ( !this.map ) {
-                layers = this._getLayers();
-                options = {
-                    layers: this._getDefaultLayer( layers )
+                
+
+                this.map = L.map( 'map' + this.mapId, {} ).setView([0,0], 10);
+
+                if (config.regions && config.regions.length > 0){
+                    layers = this._getOfflineLayers(this.map);
+                } else {
+                    layers = this._getLayers();
                 };
 
-                this.map = L.map( 'map' + this.mapId, options )
-                    .on( 'click', function( e ) {
+                layers.forEach(function(layer){
+                    that.map.addLayer(layer);
+                });
+                
+                // options = {
+                //     layers: this._getDefaultLayer( layers )
+                // };
+
+                // this.map = L.map( 'map' + this.mapId, options )
+                    this.map.on( 'click', function( e ) {
                         var latLng = e.latlng,
                             indexToPlacePoint = ( that.$lat.val() && that.$lng.val() ) ? that.points.length : that.currentIndex;
 
@@ -636,35 +649,52 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                 this.map.attributionControl.setPrefix( '' );
 
 
-                var mapquestUrl = 'http://{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png'
-                var subDomains = ['otile1','otile2','otile3','otile4']
-                var mapquestAttrib = 'Data, imagery and map information provided by <a href="http://open.mapquest.co.uk" target="_blank">MapQuest</a>, <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> and contributors.'
+                // OFFLINE TILES STUFF
+                // var mapquestUrl = 'http://{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png'
+                // var subDomains = ['otile1','otile2','otile3','otile4']
+                // var mapquestAttrib = 'Data, imagery and map information provided by <a href="http://open.mapquest.co.uk" target="_blank">MapQuest</a>, <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> and contributors.'
 
-                var options = { 
-                    map: this.map,
-                    maxZoom: 12, 
-                    attribution: mapquestAttrib, 
-                    subdomains: subDomains,
-                    dbOnly: true, 
-                    onReady: function(){}, 
-                    onError: function(){}, 
-                    storeName:"OSMTiles", 
-                    dbOption:"WebSQL"
+                // var options = { 
+                //     map: this.map,
+                //     maxZoom: 12, 
+                //     attribution: mapquestAttrib, 
+                //     subdomains: subDomains,
+                //     dbOnly: true, 
+                //     onReady: function(){}, 
+                //     onError: function(){}, 
+                //     storeName:"OSMTiles", 
+                //     dbOption:"WebSQL" // HAd to use WebSQL, indexDB was throwing an error.
+                // };
+                // var offlineLayer = new OfflineLayer( mapquestUrl, options);
+                
+                if (config.regions && config.regions.length > 0){
+                    var shouldCache = window.confirm("Would you like to cache tiles for offline use later? This may take several minutes.");
+                
+                    if (shouldCache){
+                        console.log("Caching tiles for offline use.")
+                        
+                        for(var i=0; i<layers.length;i++){
+                            console.log(layers[i]);
+
+                            layers[i].saveRegions(config.regions, layers[i].options.maxZoom, 
+                              function(){
+                                console.log('[saveRegions] onStarted');
+
+                              },
+                              function(){
+                                console.log('[saveRegions] onSuccess');
+                                $("#log").text('Done Loading OSM Regions')
+                              },
+                              function(error){
+                                console.log('onError');
+                                console.log(error);
+                            });
+                        };
+
+                    };
                 }
-                offlineLayer = new OfflineLayer( mapquestUrl, options);
-                offlineLayer.saveRegions(config.regions, options.maxZoom, 
-                  function(){
-                    console.log('[saveRegions] onStarted');
-
-                  },
-                  function(){
-                    console.log('[saveRegions] onSuccess');
-                    $("#log").text('Done Loading OSM Regions')
-                  },
-                  function(error){
-                    console.log('onError');
-                    console.log(error);
-                });
+                
+                // END OFFLINE LAYERS STUFF
 
                 // add layer control
                 if ( layers.length > 1 ) {
@@ -726,6 +756,37 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
             return layers;
         };
 
+
+        Geopicker.prototype._getOfflineLayers = function(mapObject) {
+            var url,
+                iterator = 1,
+                layers = [];
+
+            maps.forEach( function( map ) {
+                // randomly pick a tile source from the array and store it in the maps config
+                // so it will be re-used when the form is reset or multiple geo widgets are created
+                map.tileIndex = ( map.tileIndex !== 'undefined' ) ? Math.round( Math.random() * 100 ) % map.tiles.length : map.tileIndex;
+                url = map.tiles[ map.tileIndex ];
+                layers.push( new OfflineLayer( url, {
+                    id: map.id || name,
+                    maxZoom: map.maxzoom || 12,
+                    minZoom: map.minzoom || 0,
+                    name: map.name || 'map-' + iterator++,
+
+                    // OFFLINE TILE OPTIONS
+                    map: mapObject,  // This is the parent L.map object.
+                    dbOnly: true,
+                    onReady: function(){}, 
+                    onError: function(){}, 
+                    storeName:"test",
+                    dbOption:"WebSQL", // HAd to use WebSQL, indexDB was throwing an error.
+                    attribution: map.attribution || ''
+                } ) );
+            } );
+
+            return layers;
+        };
+
         Geopicker.prototype._getDefaultLayer = function( layers ) {
             var defaultLayer,
                 that = this;
@@ -736,7 +797,6 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                     return appearance === layer.options.name;
                 } );
             } );
-
             return defaultLayer;
         };
 
@@ -746,7 +806,8 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
             layers.forEach( function( layer ) {
                 baseLayers[ layer.options.name ] = layer;
             } );
-
+            console.log('[_getBaseLayers] returning baselayer ');
+            console.log(baseLayers)
             return baseLayers;
         };
 
