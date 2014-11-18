@@ -21,6 +21,9 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
         var pluginName = 'geopicker',
             config = JSON.parse( configStr ),
             defaultZoom = 15,
+            
+            cachingTiles = false, // A flag to indicate when tiles are being chached in the background.
+
             // MapBox TileJSON format
             maps = ( config && config.maps && config.maps.length > 0 ) ? config.maps : [ {
                 "name": "streets",
@@ -74,7 +77,6 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                 defaultLatLng = [ 16.8164, -3.0171 ];
 
             this.$question = $( this.element ).closest( '.question' );
-
             this.mapId = Math.round( Math.random() * 10000000 );
             this.props = this._getProps();
 
@@ -202,7 +204,6 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
             }
 
             // setting map location on load
-            console.log('[Geopicker._init()] loadedVal '+loadedVal)
             if ( !loadedVal ) {
                 // set worldview in case permissions take too long (e.g. in FF);
                 this._updateMap( [ 0, 0 ], 1 );
@@ -602,8 +603,6 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
 
             // console.debug( 'dynamic map to be updated with latLng', latLng );
             if ( !this.map ) {
-                
-
                 this.map = L.map( 'map' + this.mapId, {} ).setView([0,0], 10);
 
                 if (config.regions && config.regions.length > 0){
@@ -616,85 +615,72 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                     that.map.addLayer(layer);
                 });
                 
-                // options = {
-                //     layers: this._getDefaultLayer( layers )
-                // };
+                this.map.on( 'click', function( e ) {
+                    var latLng = e.latlng,
+                        indexToPlacePoint = ( that.$lat.val() && that.$lng.val() ) ? that.points.length : that.currentIndex;
 
-                // this.map = L.map( 'map' + this.mapId, options )
-                    this.map.on( 'click', function( e ) {
-                        var latLng = e.latlng,
-                            indexToPlacePoint = ( that.$lat.val() && that.$lng.val() ) ? that.points.length : that.currentIndex;
+                    // reduce precision to 6 decimals
+                    latLng.lat = Math.round( latLng.lat * 1000000 ) / 1000000;
+                    latLng.lng = Math.round( latLng.lng * 1000000 ) / 1000000;
 
-                        // reduce precision to 6 decimals
-                        latLng.lat = Math.round( latLng.lat * 1000000 ) / 1000000;
-                        latLng.lng = Math.round( latLng.lng * 1000000 ) / 1000000;
-
-                        // Skip intersection check if points contain empties. It will be done later, before the polygon is closed.
-                        if ( that.props.type !== 'geopoint' && !that.containsEmptyPoints( that.points, indexToPlacePoint ) && that.updatedPolylineWouldIntersect( latLng, indexToPlacePoint ) ) {
-                            that._showIntersectError();
+                    // Skip intersection check if points contain empties. It will be done later, before the polygon is closed.
+                    if ( that.props.type !== 'geopoint' && !that.containsEmptyPoints( that.points, indexToPlacePoint ) && that.updatedPolylineWouldIntersect( latLng, indexToPlacePoint ) ) {
+                        that._showIntersectError();
+                    } else {
+                        if ( !that.$lat.val() || !that.$lng.val() || that.props.type === 'geopoint' ) {
+                            that._updateInputs( latLng, 'change.bymap' );
+                        } else if ( that.$lat.val() && that.$lng.val() ) {
+                            that._addPoint();
+                            that._updateInputs( latLng, 'change.bymap' );
                         } else {
-                            if ( !that.$lat.val() || !that.$lng.val() || that.props.type === 'geopoint' ) {
-                                that._updateInputs( latLng, 'change.bymap' );
-                            } else if ( that.$lat.val() && that.$lng.val() ) {
-                                that._addPoint();
-                                that._updateInputs( latLng, 'change.bymap' );
-                            } else {
-                                // do nothing if the field has a current marker
-                                // instead the user will have to drag to change it by map
-                            }
+                            // do nothing if the field has a current marker
+                            // instead the user will have to drag to change it by map
                         }
-                    } );
+                    }
+                } );
 
                 // watch out, default "Leaflet" link clicks away from page, loosing all data
                 this.map.attributionControl.setPrefix( '' );
 
 
                 // OFFLINE TILES STUFF
-                // var mapquestUrl = 'http://{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png'
-                // var subDomains = ['otile1','otile2','otile3','otile4']
-                // var mapquestAttrib = 'Data, imagery and map information provided by <a href="http://open.mapquest.co.uk" target="_blank">MapQuest</a>, <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> and contributors.'
-
-                // var options = { 
-                //     map: this.map,
-                //     maxZoom: 12, 
-                //     attribution: mapquestAttrib, 
-                //     subdomains: subDomains,
-                //     dbOnly: true, 
-                //     onReady: function(){}, 
-                //     onError: function(){}, 
-                //     storeName:"OSMTiles", 
-                //     dbOption:"WebSQL" // HAd to use WebSQL, indexDB was throwing an error.
-                // };
-                // var offlineLayer = new OfflineLayer( mapquestUrl, options);
-                
                 if (config.regions && config.regions.length > 0){
-                    var shouldCache = window.confirm("Would you like to cache tiles for offline use later? This may take several minutes.");
-                
+                    var shouldCache = false;
+
+                    if (!localStorage.getItem('cachedTiles') && cachingTiles === false){
+                        shouldCache = window.confirm("Would you like to cache tiles for offline use later? This may take several minutes.");                        
+                    }
+
                     if (shouldCache){
                         console.log("Caching tiles for offline use.")
                         
+                        cachingTiles = true;
+                        var mapsCached = 0;
                         for(var i=0; i<layers.length;i++){
                             console.log(layers[i]);
 
                             layers[i].saveRegions(config.regions, layers[i].options.maxZoom, 
                               function(){
                                 console.log('[saveRegions] onStarted');
-
                               },
                               function(){
+
                                 console.log('[saveRegions] onSuccess');
-                                $("#log").text('Done Loading OSM Regions')
+                                mapsCached++;
+                                if (mapsCached >= layers.length){
+                                    localStorage.setItem('cachedTiles', 'true');
+                                    cachingTiles = false;
+                                }
                               },
                               function(error){
                                 console.log('onError');
                                 console.log(error);
+                                localStorage.removeItem('cachedTiles');
+                                cachingTiles = false; 
                             });
                         };
-
                     };
-                }
-                
-                // END OFFLINE LAYERS STUFF
+                } // END OFFLINE LAYERS STUFF
 
                 // add layer control
                 if ( layers.length > 1 ) {
@@ -772,15 +758,16 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                     maxZoom: map.maxzoom || 12,
                     minZoom: map.minzoom || 0,
                     name: map.name || 'map-' + iterator++,
+                    attribution: map.attribution || '',
 
                     // OFFLINE TILE OPTIONS
                     map: mapObject,  // This is the parent L.map object.
                     dbOnly: true,
                     onReady: function(){}, 
                     onError: function(){}, 
-                    storeName: map.storeName,
-                    dbOption:"WebSQL", // HAd to use WebSQL, indexDB was throwing an error.
-                    attribution: map.attribution || ''
+                    storeName: map.storeName,  // This is the name of the data store in WebSQL or indexDB 
+                    dbOption:"WebSQL" // Had to use WebSQL, indexDB was throwing an error.
+                    
                 } ) );
             } );
 
@@ -806,8 +793,6 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
             layers.forEach( function( layer ) {
                 baseLayers[ layer.options.name ] = layer;
             } );
-            console.log('[_getBaseLayers] returning baselayer ');
-            console.log(baseLayers)
             return baseLayers;
         };
 
@@ -868,8 +853,6 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                 }
             } );
 
-            // console.log( 'markers to update', markers );
-
             if ( markers.length > 0 ) {
                 this.markerLayer = L.layerGroup( markers ).addTo( this.map );
                 // change the view to fit all the markers
@@ -891,7 +874,6 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                 return;
             }
 
-            // console.log( 'updating polyline' );
             if ( this.points.length < 2 || !this._isValidLatLngList( this.points ) ) {
                 // remove quirky line remainder
                 if ( this.map ) {
@@ -904,7 +886,6 @@ define( [ 'jquery', 'enketo-js/Widget', 'text!enketo-config', 'leaflet', 'offlin
                 }
                 this.polyline = null;
                 this.polygon = null;
-                // console.log( 'list of points invalid' );
                 return;
             }
 

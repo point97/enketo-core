@@ -24,7 +24,7 @@
     {
         "tiles": [ "http://tile.stamen.com/watercolor/{z}/{x}/{y}.jpg" ],
         "name": "watercolor",
-        "attribution": "Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors",
+        "attribution": "Map tiles by <a href='http://stamen.com/''>Stamen Design</a> under <a href='http://creativecommons.org/licenses/by/3.0'>CC BY 3.0</a> Data by ",
         "storeName": "watercolorTiles"
 
     } ],
