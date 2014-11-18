@@ -18,11 +18,25 @@
     "maps": [ {
         "tiles": [ "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" ],
         "name": "streets",
-        "attribution": "Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors"
-    }, {
-        "tiles": [ "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" ],
-        "name": "layer2",
-        "attribution": "Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors"
+        "attribution": "Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors",
+        "storeName": "osmTiles"
+    },
+    {
+        "tiles": [ "http://tile.stamen.com/watercolor/{z}/{x}/{y}.jpg" ],
+        "name": "watercolor",
+        "attribution": "Map tiles by <a href='http://stamen.com/''>Stamen Design</a> under <a href='http://creativecommons.org/licenses/by/3.0'>CC BY 3.0</a> Data by ",
+        "storeName": "watercolorTiles"
+
     } ],
+    "regions" : [
+        {
+            "name": "Region 1 - Coos Bay to OR/CA Border",
+            "nLat": 43.5,
+            "sLat": 42.0,
+            "wLng": -124.7,
+            "eLng": -124.2
+        }
+    ],
+
     "google_api_key": ""
 }

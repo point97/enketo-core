@@ -1,22 +1,22 @@
 {
-    "name": "enketo-core",
-    "version": "3.0.3",
-    "homepage": "https://github.com/enketo/enketo-core",
-    "authors": [
-        "Martijn van de Rijdt <martijn@enketo.org>"
-    ],
-    "license": "Apache2",
-    "private": true,
-    "ignore": [
-        "**/.*",
-        "node_modules",
-        "bower_components",
-        "test",
-        "tests"
-    ],
-    "dependencies": {
-        "q": "1.0.1",
-        "jquery": "~2.1.1",
-        "requirejs": "~2.1.15"
-    }
+  "name": "enketo-core",
+  "version": "3.0.3",
+  "homepage": "https://github.com/enketo/enketo-core",
+  "authors": [
+    "Martijn van de Rijdt <martijn@enketo.org>"
+  ],
+  "license": "Apache2",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "q": "1.0.1",
+    "jquery": "~2.1.1",
+    "requirejs": "~2.1.15"
+  }
 }

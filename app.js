@@ -12,7 +12,8 @@ requirejs.config( {
         "jquery.touchswipe": "jquery-touchswipe/jquery.touchSwipe",
         "leaflet": "leaflet/leaflet",
         "bootstrap-slider": "bootstrap-slider/js/bootstrap-slider",
-        "q": "bower-components/q/q"
+        "q": "bower-components/q/q",
+        "offlineLayer": "offlineLayer/offlinemap"
     },
     shim: {
         "xpath": {
@@ -31,9 +32,13 @@ requirejs.config( {
         },
         "leaflet": {
             exports: "L"
+        },
+        "offlineLayer": {
+            deps: [ "leaflet" ],
+            exports: "OfflineLayer"
         }
     }
-} );
+});
 
 requirejs( [ 'jquery', 'Modernizr', 'enketo-js/Form', 'file-manager' ],
     function( $, Modernizr, Form, fileManager ) {
